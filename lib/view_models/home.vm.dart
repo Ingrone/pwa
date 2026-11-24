@@ -88,41 +88,19 @@ class HomeViewModel extends GMapViewModel {
   double? _pendingOngoingOrderFareOverride;
   String? _activeOrderStreamCode;
   String? _lastProcessedOrderSnapshotKey;
+  String? _lastProcessedOrderSyncedAtKey;
   String? _latestFirestoreDriverId;
   String? _latestFirestoreStatus;
   String? _latestFirestoreCancelRequestStatus;
   bool? _latestFirestoreUserSeen;
   String? _latestFirestoreDriverMessage;
+  String? _latchedUnreadHomePreviewKey;
+  String? _acknowledgedHomePreviewKey;
   DateTime? _lastDriverSyncOrderRefreshAt;
   String? _driverLocationSyncOrderCode;
   String? _lastShownTerminalOrderDialogKey;
   gmaps.LatLng? _latestSyncedDriverLatLng;
   final TextEditingController promoCodeTEC = TextEditingController();
-
-  void _tempCancelDebug(
-    String label, {
-    Map<String, Object?> details = const {},
-  }) {
-    debugPrint(
-      "[TEMP_CANCEL_DEBUG] ${jsonEncode({
-            "ts": DateTime.now().toIso8601String(),
-            "label": label,
-            "bookingId": bookingId,
-            "ongoingOrderId": ongoingOrder?.id,
-            "ongoingOrderCode": ongoingOrder?.code,
-            "ongoingOrderStatus": ongoingOrder?.status,
-            "ongoingOrderReason": ongoingOrder?.reason,
-            "cancelledByWho": ongoingOrder?.cancelledByWho,
-            "latestFirestoreStatus": _latestFirestoreStatus,
-            "lastStatus": lastStatus,
-            "isShowingTerminalOrderDialog": _isShowingTerminalOrderDialog,
-            "isHandlingCancelledOrderTransition":
-                _isHandlingCancelledOrderTransition,
-            "lastShownTerminalOrderDialogKey": _lastShownTerminalOrderDialogKey,
-            ...details,
-          })}",
-    );
-  }
 
   String get currentBookingTypeLabel {
     if (!isBool(AuthService.currentUser?.isProvider)) {
@@ -246,6 +224,39 @@ class HomeViewModel extends GMapViewModel {
       _shouldSuppressAutomaticPartnerDisplays ||
       isShowingTerminalOrderTransition;
 
+  String? _homePreviewKey(String? message) {
+    final orderCode = (ongoingOrder?.code ?? "").trim();
+    final normalizedMessage = (message ?? "").trim();
+    if (orderCode.isEmpty ||
+        normalizedMessage.isEmpty ||
+        normalizedMessage.toLowerCase() == "null") {
+      return null;
+    }
+    return "$orderCode|$normalizedMessage";
+  }
+
+  void _acknowledgeHomeChatPreviewLocally() {
+    final previewKey = _homePreviewKey(dvrMessage);
+    if (previewKey != null) {
+      _acknowledgedHomePreviewKey = previewKey;
+      if (_latchedUnreadHomePreviewKey == previewKey) {
+        _latchedUnreadHomePreviewKey = null;
+      }
+    }
+    userSeen = true;
+    _latestFirestoreUserSeen = true;
+  }
+
+  bool get shouldShowHomeChatPreview {
+    final message = (dvrMessage ?? "").trim();
+    final status = _normalizeOrderStatus(ongoingOrder?.status);
+    return ongoingOrder != null &&
+        status != "cancelled" &&
+        message.isNotEmpty &&
+        message.toLowerCase() != "null" &&
+        !isBool(userSeen);
+  }
+
   Future<void> markCurrentOrderUserSeen({
     bool syncRemote = true,
   }) async {
@@ -262,8 +273,7 @@ class HomeViewModel extends GMapViewModel {
         );
       } catch (_) {}
     }
-    userSeen = true;
-    _latestFirestoreUserSeen = true;
+    _acknowledgeHomeChatPreviewLocally();
     notifyListeners();
   }
 
@@ -1025,6 +1035,14 @@ class HomeViewModel extends GMapViewModel {
       canCancelAfterWaitWithoutDriverChat ||
       canRebookAfterWaitWithoutDriverChat;
 
+  bool get shouldShowActiveCancelAction {
+    if (ongoingOrder == null || isOngoingOrderStatusUncertain) {
+      return false;
+    }
+    final status = _normalizeOrderStatus(ongoingOrder?.status);
+    return status == "pending" || status == "preparing" || status == "ready";
+  }
+
   bool get isOngoingOrderStatusUncertain {
     if (isResolvingInitialOngoingOrder) {
       return true;
@@ -1337,26 +1355,8 @@ class HomeViewModel extends GMapViewModel {
   }) async {
     final resolvedOrderId = order?.id ?? bookingId;
     final dialogKey = "$resolvedOrderId|$terminalDialogType";
-    _tempCancelDebug(
-      "ShowTerminalOrderDialogAttempt",
-      details: {
-        "dialogKey": dialogKey,
-        "terminalDialogType": terminalDialogType,
-        "reason": reason,
-        "isChatViewOpen": isChatViewOpen,
-      },
-    );
-
     if (_lastShownTerminalOrderDialogKey == dialogKey ||
         _isShowingTerminalOrderDialog) {
-      _tempCancelDebug(
-        "ShowTerminalOrderDialogSkipped",
-        details: {
-          "dialogKey": dialogKey,
-          "terminalDialogType": terminalDialogType,
-          "reason": reason,
-        },
-      );
       return;
     }
 
@@ -1369,14 +1369,6 @@ class HomeViewModel extends GMapViewModel {
     }
 
     try {
-      _tempCancelDebug(
-        "ShowTerminalOrderDialogStart",
-        details: {
-          "dialogKey": dialogKey,
-          "terminalDialogType": terminalDialogType,
-          "reason": reason,
-        },
-      );
       await AlertService().showAppAlert(
         dismissible: false,
         title: "Booking ${reason == "pass" ? "Passed" : "Cancelled"}",
@@ -1384,14 +1376,6 @@ class HomeViewModel extends GMapViewModel {
         content:
             "Your booking has been ${reason == "pass" ? "passed" : "cancelled"}",
         confirmAction: () async {
-          _tempCancelDebug(
-            "ShowTerminalOrderDialogConfirm",
-            details: {
-              "dialogKey": dialogKey,
-              "terminalDialogType": terminalDialogType,
-              "reason": reason,
-            },
-          );
           Navigator.of(Get.context!, rootNavigator: true).pop();
           if (isChatViewOpen) {
             Future.microtask(() {
@@ -1404,32 +1388,13 @@ class HomeViewModel extends GMapViewModel {
       );
     } finally {
       _isShowingTerminalOrderDialog = false;
-      _tempCancelDebug(
-        "ShowTerminalOrderDialogEnd",
-        details: {
-          "dialogKey": dialogKey,
-          "terminalDialogType": terminalDialogType,
-          "reason": reason,
-        },
-      );
     }
   }
 
   Future<void> _handleCancelledOrderState(
     Order? cancelledOrder,
   ) async {
-    _tempCancelDebug(
-      "HandleCancelledOrderStateStart",
-      details: {
-        "inputCancelledOrderId": cancelledOrder?.id,
-        "inputCancelledOrderCode": cancelledOrder?.code,
-        "inputCancelledOrderStatus": cancelledOrder?.status,
-        "inputCancelledOrderReason": cancelledOrder?.reason,
-        "inputCancelledOrderCancelledByWho": cancelledOrder?.cancelledByWho,
-      },
-    );
     if (_isHandlingCancelledOrderTransition) {
-      _tempCancelDebug("HandleCancelledOrderStateSkippedAlreadyHandling");
       return;
     }
     _isHandlingCancelledOrderTransition = true;
@@ -1440,14 +1405,6 @@ class HomeViewModel extends GMapViewModel {
     final shouldShowAlert = reason != "rebook";
 
     try {
-      _tempCancelDebug(
-        "HandleCancelledOrderStateDecision",
-        details: {
-          "reason": reason,
-          "shouldRestorePreview": shouldRestorePreview,
-          "shouldShowAlert": shouldShowAlert,
-        },
-      );
       if (shouldShowAlert) {
         await _showTerminalOrderDialogOnce(
           order: cancelledOrder,
@@ -1462,14 +1419,12 @@ class HomeViewModel extends GMapViewModel {
       snackShown = true;
       notifyListeners();
       stopAllListeners();
-      _tempCancelDebug("HandleCancelledOrderStateAfterReset");
 
       if (shouldRestorePreview) {
         await _restoreCancelledBookingRoutePreview();
       }
     } finally {
       _isHandlingCancelledOrderTransition = false;
-      _tempCancelDebug("HandleCancelledOrderStateEnd");
     }
   }
 
@@ -1929,15 +1884,6 @@ class HomeViewModel extends GMapViewModel {
     bool forceStop = false,
     String? signalReason,
   }) async {
-    _tempCancelDebug(
-      "GetOngoingOrderStart",
-      details: {
-        "refresh": refresh,
-        "showSnack": showSnack,
-        "forceStop": forceStop,
-        "signalReason": signalReason,
-      },
-    );
     setBusyForObject(ongoingOrder, true);
     if (refresh) {
       lastStatus = null;
@@ -1956,14 +1902,6 @@ class HomeViewModel extends GMapViewModel {
     try {
       final fetchedOngoingOrder = await taxiRequest.ongoingOrderRequest();
       if (fetchedOngoingOrder == null) {
-        _tempCancelDebug(
-          "GetOngoingOrderFetchedNull",
-          details: {
-            "hadExistingOngoingOrder": hadExistingOngoingOrder,
-            "previousOrderCode": previousOrderCode,
-            "previousOrderStatus": previousOrderStatus,
-          },
-        );
         if (hadExistingOngoingOrder &&
             previousOrderCode.isNotEmpty &&
             _normalizeOrderStatus(_latestFirestoreStatus) == "cancelled") {
@@ -1989,17 +1927,6 @@ class HomeViewModel extends GMapViewModel {
       }
       final fetchedBackendStatus =
           _normalizeOrderStatus(fetchedOngoingOrder.status);
-      _tempCancelDebug(
-        "GetOngoingOrderFetched",
-        details: {
-          "fetchedOrderId": fetchedOngoingOrder.id,
-          "fetchedOrderCode": fetchedOngoingOrder.code,
-          "fetchedBackendStatus": fetchedBackendStatus,
-          "fetchedReason": fetchedOngoingOrder.reason,
-          "fetchedCancelledByWho": fetchedOngoingOrder.cancelledByWho,
-          "signalReason": signalReason,
-        },
-      );
       ongoingOrder = fetchedOngoingOrder;
       _pendingBookingFareOverride = null;
       _applyPendingDriverDistantFareToOngoingOrder();
@@ -2094,14 +2021,6 @@ class HomeViewModel extends GMapViewModel {
         notifyListeners();
       }
     } catch (e) {
-      _tempCancelDebug(
-        "GetOngoingOrderCatch",
-        details: {
-          "error": "$e",
-          "hadExistingOngoingOrder": hadExistingOngoingOrder,
-          "previousOrderCode": previousOrderCode,
-        },
-      );
       if (hadExistingOngoingOrder && previousOrderCode.isNotEmpty) {
         notifyListeners();
         return;
@@ -2133,15 +2052,6 @@ class HomeViewModel extends GMapViewModel {
     }
     notifyListeners();
     setBusyForObject(ongoingOrder, false);
-    _tempCancelDebug(
-      "GetOngoingOrderEnd",
-      details: {
-        "refresh": refresh,
-        "showSnack": showSnack,
-        "forceStop": forceStop,
-        "signalReason": signalReason,
-      },
-    );
   }
 
   processNewOrder() async {
@@ -2722,20 +2632,9 @@ class HomeViewModel extends GMapViewModel {
   }
 
   Future<void> processAcceptedCancelRequestCancel() async {
-    _tempCancelDebug("ProcessAcceptedCancelRequestCancelStart");
     final latestRemainingCancelSeconds =
         _remainingCancelSecondsForOrder(ongoingOrder);
     if (!canCancelWithAcceptedRequest && latestRemainingCancelSeconds > 0) {
-      _tempCancelDebug(
-        "ProcessAcceptedCancelRequestCancelBlockedByWait",
-        details: {
-          "latestRemainingCancelSeconds": latestRemainingCancelSeconds,
-          "canCancelWithAcceptedRequest": canCancelWithAcceptedRequest,
-          "canRebookAfterWaitWithoutDriverChat":
-              canRebookAfterWaitWithoutDriverChat,
-          "hasAcceptedCancelRequest": hasAcceptedCancelRequest,
-        },
-      );
       _showCancelFlowWaitSnackBar(
         latestRemainingCancelSeconds,
         includeRequestCancellation:
@@ -2745,12 +2644,10 @@ class HomeViewModel extends GMapViewModel {
     }
 
     if (AuthService.inReviewMode()) {
-      _tempCancelDebug("ProcessAcceptedCancelRequestCancelReviewModeExit");
       Get.back();
       return;
     }
 
-    _tempCancelDebug("ProcessAcceptedCancelRequestCancelShowLoading");
     AlertService().showLoading();
     try {
       final orderCode = ongoingOrder?.code?.trim();
@@ -2759,60 +2656,27 @@ class HomeViewModel extends GMapViewModel {
         reason: "initiated by passenger",
         rebook: false,
       );
-      _tempCancelDebug(
-        "ProcessAcceptedCancelRequestCancelResponse",
-        details: {
-          "apiAllGood": apiResponse.allGood,
-          "apiCode": apiResponse.code,
-          "apiMessage": apiResponse.message,
-          "orderCode": orderCode,
-        },
-      );
       if (apiResponse.allGood) {
-        _tempCancelDebug(
-          "ProcessAcceptedCancelRequestCancelStopLoadingSuccess",
-        );
         AlertService().stopLoading(forceStop: true);
         _shouldSuppressAutomaticPartnerDisplays = true;
         if (orderCode != null && orderCode.isNotEmpty) {
-          _tempCancelDebug(
-            "ProcessAcceptedCancelRequestCancelMarkUserSeen",
-            details: {
-              "orderCode": orderCode,
-            },
-          );
           await markCurrentOrderUserSeen();
         } else {
-          userSeen = true;
-          _latestFirestoreUserSeen = true;
+          _acknowledgeHomeChatPreviewLocally();
           notifyListeners();
         }
       } else {
         if (apiResponse.message.contains("cancel")) {
-          _tempCancelDebug(
-            "ProcessAcceptedCancelRequestCancelBackendCancelMessage",
-            details: {
-              "apiMessage": apiResponse.message,
-            },
-          );
           clearGMapDetails();
         } else {
           throw apiResponse.message;
         }
       }
     } catch (e) {
-      _tempCancelDebug(
-        "ProcessAcceptedCancelRequestCancelCatch",
-        details: {
-          "error": "$e",
-        },
-      );
       if (!isChatViewOpen) {
         Get.until((route) => route.isFirst);
       }
       showError(e);
-    } finally {
-      _tempCancelDebug("ProcessAcceptedCancelRequestCancelFinally");
     }
   }
 
@@ -2902,8 +2766,7 @@ class HomeViewModel extends GMapViewModel {
           },
         );
       }
-      userSeen = true;
-      _latestFirestoreUserSeen = true;
+      _acknowledgeHomeChatPreviewLocally();
       final chatEntity = _buildUserChatEntity();
       final currentUserName = (ongoingOrder?.user?.name ?? "User").trim();
       final newDriverName = (availableDriver?.driver?.name ?? "Driver").trim();
@@ -2972,11 +2835,14 @@ class HomeViewModel extends GMapViewModel {
     _pendingSignalRefreshForceStop = false;
     _activeOrderStreamCode = null;
     _lastProcessedOrderSnapshotKey = null;
+    _lastProcessedOrderSyncedAtKey = null;
     _latestFirestoreDriverId = null;
     _latestFirestoreStatus = null;
     _latestFirestoreCancelRequestStatus = null;
     _latestFirestoreUserSeen = null;
     _latestFirestoreDriverMessage = null;
+    _latchedUnreadHomePreviewKey = null;
+    _acknowledgedHomePreviewKey = null;
     _lastDriverSyncOrderRefreshAt = null;
     hasHydratedOngoingOrderMeta = false;
     _pendingStatusFareVisualOverride = null;
@@ -3001,6 +2867,7 @@ class HomeViewModel extends GMapViewModel {
     _hasPendingSignalRefresh = false;
     _pendingSignalRefreshReason = null;
     _pendingSignalRefreshForceStop = false;
+    _lastProcessedOrderSyncedAtKey = null;
     lastCenter = null;
     lastStatus = null;
     cancelRequestStatus = "";
@@ -3010,6 +2877,8 @@ class HomeViewModel extends GMapViewModel {
     _latestFirestoreCancelRequestStatus = null;
     _latestFirestoreUserSeen = null;
     _latestFirestoreDriverMessage = null;
+    _latchedUnreadHomePreviewKey = null;
+    _acknowledgedHomePreviewKey = null;
     hasHydratedOngoingOrderMeta = false;
     _pendingStatusFareVisualOverride = null;
     _pendingBookingFareOverride = null;
@@ -3098,8 +2967,16 @@ class HomeViewModel extends GMapViewModel {
               event.data()?["includes_shower_cap"],
               "includes_shower_cap",
             );
-            final rawNextUserSeenValue = isBool(event.data()?["userSeen"]);
-            final nextDriverMessageValue = "${event.data()?["driverMessage"]}";
+            final snapshotData = event.data();
+            final hasUserSeenValue =
+                snapshotData?.containsKey("userSeen") ?? false;
+            final rawNextUserSeenValue = hasUserSeenValue
+                ? isBool(snapshotData?["userSeen"])
+                : (previousUserSeen ?? true);
+            final rawNextDriverMessage = snapshotData?["driverMessage"];
+            final nextDriverMessageValue = rawNextDriverMessage == null
+                ? (previousDriverMessage ?? "")
+                : "$rawNextDriverMessage";
             final nextCancelRequestStatusValue =
                 "${event.data()?["cancel_request_status"] ?? ""}".trim();
             final hasIncomingCancelRequestResolution =
@@ -3113,10 +2990,27 @@ class HomeViewModel extends GMapViewModel {
                 hasIncomingCancelRequestResolution &&
                     !isChatViewOpen &&
                     !rawNextUserSeenValue;
-            final nextUserSeenValue =
-                shouldForceUnreadForIncomingCancelResolution
-                    ? false
-                    : rawNextUserSeenValue;
+            var nextUserSeenValue = shouldForceUnreadForIncomingCancelResolution
+                ? false
+                : rawNextUserSeenValue;
+            final nextHomePreviewKey = _homePreviewKey(
+              nextDriverMessageValue,
+            );
+            if (nextHomePreviewKey != null) {
+              if (_acknowledgedHomePreviewKey == nextHomePreviewKey) {
+                nextUserSeenValue = true;
+              } else {
+                if (!nextUserSeenValue) {
+                  _latchedUnreadHomePreviewKey = nextHomePreviewKey;
+                }
+                if (_latchedUnreadHomePreviewKey == nextHomePreviewKey) {
+                  // Once shown, keep this exact message visible until the
+                  // user closes or opens it. Background order syncs can
+                  // briefly publish a stale userSeen=true value.
+                  nextUserSeenValue = false;
+                }
+              }
+            }
             final currentDriverId =
                 "${ongoingOrder?.driverId ?? ongoingOrder?.driver?.id ?? ""}"
                     .trim();
@@ -3174,18 +3068,6 @@ class HomeViewModel extends GMapViewModel {
                       currentStatus != "cancelled" &&
                       currentStatus != "failed" &&
                       !isCompletedReceiptStatus(currentStatus);
-              _tempCancelDebug(
-                "FirestoreCancelledSnapshot",
-                details: {
-                  "currentStatus": currentStatus,
-                  "nextStatus": nextStatus,
-                  "snapshotReason": "${event.data()?["reason"] ?? ""}",
-                  "snapshotCancelledByWho":
-                      "${event.data()?["cancelled_by_who"] ?? ""}",
-                  "shouldConfirmCancelledWithBackend":
-                      shouldConfirmCancelledWithBackend,
-                },
-              );
               if (shouldConfirmCancelledWithBackend) {
                 await _refreshOngoingOrderFromSignal(
                   reason: "firestore_cancelled_confirmation",
@@ -3221,13 +3103,6 @@ class HomeViewModel extends GMapViewModel {
                 "orderSyncedAt",
                 "${event.data()?["syncedAt"]}",
               );
-              _tempCancelDebug(
-                "FirestoreCancelledBeforeHandleState",
-                details: {
-                  "nextReason": nextReason,
-                  "nextCancelledByWho": nextCancelledByWho,
-                },
-              );
               await _handleCancelledOrderState(ongoingOrder);
               return;
             }
@@ -3239,7 +3114,20 @@ class HomeViewModel extends GMapViewModel {
               notifyListeners();
             }
             final hasSyncedAtChange = nextOrderSyncedAt.isNotEmpty &&
-                nextOrderSyncedAt != previousOrderSyncedAt;
+                nextOrderSyncedAt != previousOrderSyncedAt &&
+                _lastProcessedOrderSyncedAtKey !=
+                    "$orderCode|$nextOrderSyncedAt";
+            if (hasSyncedAtChange) {
+              // Checkpoint before refreshing. A forced refresh rebinds the
+              // Firestore stream, whose initial snapshot contains the same
+              // syncedAt value. Saving it after the refresh caused that same
+              // snapshot to recursively trigger another backend request.
+              _lastProcessedOrderSyncedAtKey = "$orderCode|$nextOrderSyncedAt";
+              await StorageService.prefs?.setString(
+                "orderSyncedAt",
+                nextOrderSyncedAt,
+              );
+            }
             if (!isCompletedReceiptStatus(nextStatus) &&
                 hasStatusChange &&
                 currentStatus == "pending" &&
@@ -3330,6 +3218,9 @@ class HomeViewModel extends GMapViewModel {
               "orderSyncedAt",
               nextOrderSyncedAt,
             );
+            if (nextOrderSyncedAt.isNotEmpty) {
+              _lastProcessedOrderSyncedAtKey = "$orderCode|$nextOrderSyncedAt";
+            }
           } catch (_) {}
         },
       );
@@ -4139,8 +4030,7 @@ class HomeViewModel extends GMapViewModel {
           if (isCancellationRequest) "cancel_request_status": "pending",
         },
       );
-      userSeen = true;
-      _latestFirestoreUserSeen = true;
+      _acknowledgeHomeChatPreviewLocally();
       notifyListeners();
 
       final chatRef = fbStore.collection("${chatEntity.path}/Activity");
@@ -4183,8 +4073,7 @@ class HomeViewModel extends GMapViewModel {
           "userSeen": true,
         },
       );
-      userSeen = true;
-      _latestFirestoreUserSeen = true;
+      _acknowledgeHomeChatPreviewLocally();
 
       final chatEntity = _buildUserChatEntity();
       if (chatEntity != null) {
@@ -4231,8 +4120,7 @@ class HomeViewModel extends GMapViewModel {
         },
       ).catchError((_) {}),
     );
-    userSeen = true;
-    _latestFirestoreUserSeen = true;
+    _acknowledgeHomeChatPreviewLocally();
     notifyListeners();
     final chatEntity = _buildUserChatEntity();
     if (chatEntity == null) {

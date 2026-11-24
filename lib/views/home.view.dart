@@ -4680,7 +4680,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                                             ).withValues(
                                                                               alpha: 0.1,
                                                                             )
-                                                                          : vm.canOpenCancelFlow
+                                                                          : vm.shouldShowActiveCancelAction
                                                                               ? Colors.red.shade100
                                                                               : const Color(
                                                                                   0xFF007BFF,
@@ -4752,22 +4752,18 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                                         vm.vehicleTypes)) {
                                                                       vm.processNewOrder();
                                                                     }
-                                                                  } else if (((vm
-                                                                                  .ongoingOrder
-                                                                                  ?.status ??
-                                                                              "")
-                                                                          .trim()
-                                                                          .toLowerCase() ==
-                                                                      "enroute") ||
-                                                                      ((vm.ongoingOrder?.status ??
-                                                                                  "")
+                                                                  } else if (((vm.ongoingOrder?.status ?? "")
+                                                                              .trim()
+                                                                              .toLowerCase() ==
+                                                                          "enroute") ||
+                                                                      ((vm.ongoingOrder?.status ?? "")
                                                                               .trim()
                                                                               .toLowerCase() ==
                                                                           "delivered")) {
                                                                     _openSupportChannel(
                                                                         vm);
                                                                   } else if (vm
-                                                                      .canOpenCancelFlow) {
+                                                                      .shouldShowActiveCancelAction) {
                                                                     vm.cancelOrder();
                                                                   } else {
                                                                     final status = (vm.ongoingOrder?.status ??
@@ -4810,7 +4806,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                                         ? const Color(
                                                                             0xFF007BFF,
                                                                           )
-                                                                        : vm.canOpenCancelFlow
+                                                                        : vm.shouldShowActiveCancelAction
                                                                             ? Colors.red
                                                                             : const Color(
                                                                                 0xFF007BFF,
@@ -4947,76 +4943,281 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                         !vm.shouldShowCompletedReceiptOverlay
                             ? const SizedBox.shrink()
                             : Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  color: const Color(
+                                    0xFF007BFF,
+                                  ),
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      child: SizedBox(
+                                        width: double.infinity.clamp(
+                                          0,
+                                          800,
+                                        ),
                                         child: Container(
-                                          color: const Color(
-                                            0xFF007BFF,
-                                          ),
-                                          child: Center(
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 20,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.all(
+                                              Radius.circular(
+                                                12,
                                               ),
-                                              child: SizedBox(
-                                                width: double.infinity.clamp(
-                                                  0,
-                                                  800,
+                                            ),
+                                          ),
+                                          child: SingleChildScrollView(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const SizedBox(
+                                                  height: 20,
                                                 ),
-                                                child: Container(
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius:
-                                                        BorderRadius.all(
-                                                      Radius.circular(
-                                                        12,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  child: SingleChildScrollView(
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        const SizedBox(
-                                                          height: 20,
-                                                        ),
-                                                        GestureDetector(
-                                                          onTap:
-                                                              !_hasAssignedDriver(
-                                                            vm,
-                                                            useCompletedReceipt:
-                                                                true,
-                                                          )
-                                                                  ? null
-                                                                  : () {
-                                                                      AlertService()
-                                                                          .showAppAlert(
-                                                                        isCustom:
-                                                                            true,
-                                                                        customWidget:
-                                                                            PinchZoom(
-                                                                          child:
-                                                                              _buildDriverPreviewImage(
-                                                                            vm,
-                                                                            useCompletedReceipt: true,
-                                                                          ),
-                                                                        ),
-                                                                      );
-                                                                    },
-                                                          child: ClipOval(
-                                                            child: SizedBox(
-                                                              width: 80,
-                                                              height: 80,
+                                                GestureDetector(
+                                                  onTap: !_hasAssignedDriver(
+                                                    vm,
+                                                    useCompletedReceipt: true,
+                                                  )
+                                                      ? null
+                                                      : () {
+                                                          AlertService()
+                                                              .showAppAlert(
+                                                            isCustom: true,
+                                                            customWidget:
+                                                                PinchZoom(
                                                               child:
-                                                                  _buildDriverAvatar(
+                                                                  _buildDriverPreviewImage(
                                                                 vm,
                                                                 useCompletedReceipt:
                                                                     true,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                  child: ClipOval(
+                                                    child: SizedBox(
+                                                      width: 80,
+                                                      height: 80,
+                                                      child: _buildDriverAvatar(
+                                                        vm,
+                                                        useCompletedReceipt:
+                                                            true,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height: 12,
+                                                ),
+                                                Text(
+                                                  capitalizeWords(
+                                                    _resolvedDriverName(
+                                                      vm,
+                                                      useCompletedReceipt: true,
+                                                    ),
+                                                  ),
+                                                  style: const TextStyle(
+                                                    height: 1.15,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(
+                                                      0xFF030744,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  capitalizeWords(
+                                                    _resolvedDriverInfo(
+                                                      vm,
+                                                      useCompletedReceipt: true,
+                                                    ),
+                                                    alt: "Driver Info",
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    height: 1.15,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: Color(
+                                                      0xFF030744,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height: 16,
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 20,
+                                                  ),
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          const BorderRadius
+                                                              .all(
+                                                        Radius.circular(
+                                                          12,
+                                                        ),
+                                                      ),
+                                                      border: Border.all(
+                                                        width: 1,
+                                                        color: const Color(
+                                                          0xFF030744,
+                                                        ).withValues(
+                                                          alpha: 0.15,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Column(
+                                                      children: [
+                                                        const SizedBox(
+                                                            height: 16),
+                                                        Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: () {
+                                                              final status = vm
+                                                                  .completedReceiptOrder
+                                                                  ?.status;
+                                                              if (status ==
+                                                                  "pending") {
+                                                                return Colors
+                                                                    .blue
+                                                                    .shade100;
+                                                              } else if (status ==
+                                                                  "preparing") {
+                                                                return Colors
+                                                                    .blue
+                                                                    .shade100;
+                                                              } else if (status ==
+                                                                  "ready") {
+                                                                return Colors
+                                                                    .blue
+                                                                    .shade100;
+                                                              } else if (status ==
+                                                                  "enroute") {
+                                                                return Colors
+                                                                    .blue
+                                                                    .shade100;
+                                                              } else if (status ==
+                                                                  "failed") {
+                                                                return Colors
+                                                                    .red
+                                                                    .shade100;
+                                                              } else if (status ==
+                                                                  "cancelled") {
+                                                                return Colors
+                                                                    .red
+                                                                    .shade100;
+                                                              } else if (vm
+                                                                  .isCompletedReceiptStatus(
+                                                                status,
+                                                              )) {
+                                                                return Colors
+                                                                    .green
+                                                                    .shade100;
+                                                              } else {
+                                                                return Colors
+                                                                    .blue
+                                                                    .shade100;
+                                                              }
+                                                            }(),
+                                                            borderRadius:
+                                                                const BorderRadius
+                                                                    .all(
+                                                              Radius.circular(
+                                                                  4),
+                                                            ),
+                                                          ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                              vertical: 4,
+                                                              horizontal: 8,
+                                                            ),
+                                                            child: Text(
+                                                              () {
+                                                                final status = vm
+                                                                    .completedReceiptOrder
+                                                                    ?.status;
+                                                                if (status ==
+                                                                    "pending") {
+                                                                  return "Searching";
+                                                                } else if (status ==
+                                                                    "preparing") {
+                                                                  return "Waiting";
+                                                                } else if (status ==
+                                                                    "ready") {
+                                                                  return "Arrived";
+                                                                } else if (status ==
+                                                                    "enroute") {
+                                                                  return "Ongoing";
+                                                                } else if (status ==
+                                                                    "failed") {
+                                                                  return "Failed";
+                                                                } else if (status ==
+                                                                    "cancelled") {
+                                                                  return "Cancelled";
+                                                                } else if (vm
+                                                                    .isCompletedReceiptStatus(
+                                                                  status,
+                                                                )) {
+                                                                  return "Completed";
+                                                                } else {
+                                                                  return "Connecting";
+                                                                }
+                                                              }(),
+                                                              style: TextStyle(
+                                                                height: 1,
+                                                                fontSize: 13,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color: () {
+                                                                  final status = vm
+                                                                      .completedReceiptOrder
+                                                                      ?.status;
+                                                                  if (status ==
+                                                                      "pending") {
+                                                                    return Colors
+                                                                        .blue;
+                                                                  } else if (status ==
+                                                                      "preparing") {
+                                                                    return Colors
+                                                                        .blue;
+                                                                  } else if (status ==
+                                                                      "ready") {
+                                                                    return Colors
+                                                                        .blue;
+                                                                  } else if (status ==
+                                                                      "enroute") {
+                                                                    return Colors
+                                                                        .blue;
+                                                                  } else if (status ==
+                                                                      "failed") {
+                                                                    return Colors
+                                                                        .red;
+                                                                  } else if (status ==
+                                                                      "cancelled") {
+                                                                    return Colors
+                                                                        .red;
+                                                                  } else if (vm
+                                                                      .isCompletedReceiptStatus(
+                                                                    status,
+                                                                  )) {
+                                                                    return Colors
+                                                                        .green;
+                                                                  } else {
+                                                                    return Colors
+                                                                        .blue;
+                                                                  }
+                                                                }(),
                                                               ),
                                                             ),
                                                           ),
@@ -5025,16 +5226,11 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                           height: 12,
                                                         ),
                                                         Text(
-                                                          capitalizeWords(
-                                                            _resolvedDriverName(
-                                                              vm,
-                                                              useCompletedReceipt:
-                                                                  true,
-                                                            ),
-                                                          ),
+                                                          "#${vm.completedReceiptOrder?.id}",
                                                           style:
                                                               const TextStyle(
                                                             height: 1.15,
+                                                            fontSize: 14,
                                                             fontWeight:
                                                                 FontWeight.bold,
                                                             color: Color(
@@ -5043,701 +5239,436 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                           ),
                                                         ),
                                                         Text(
-                                                          capitalizeWords(
-                                                            _resolvedDriverInfo(
-                                                              vm,
-                                                              useCompletedReceipt:
-                                                                  true,
-                                                            ),
-                                                            alt: "Driver Info",
+                                                          DateFormat(
+                                                            "MMMM dd, yyy - h:mm a",
+                                                          ).format(
+                                                            vm.completedReceiptOrder
+                                                                    ?.createdAt ??
+                                                                DateTime.now(),
                                                           ),
-                                                          textAlign:
-                                                              TextAlign.center,
                                                           style:
                                                               const TextStyle(
                                                             height: 1.15,
                                                             fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w400,
                                                             color: Color(
                                                               0xFF030744,
                                                             ),
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                          height: 16,
-                                                        ),
+                                                            height: 16),
                                                         Padding(
                                                           padding:
                                                               const EdgeInsets
                                                                   .symmetric(
-                                                            horizontal: 20,
+                                                            horizontal: 12,
                                                           ),
-                                                          child: Container(
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color:
-                                                                  Colors.white,
-                                                              borderRadius:
-                                                                  const BorderRadius
-                                                                      .all(
-                                                                Radius.circular(
-                                                                  12,
-                                                                ),
-                                                              ),
-                                                              border:
-                                                                  Border.all(
-                                                                width: 1,
-                                                                color:
-                                                                    const Color(
-                                                                  0xFF030744,
-                                                                ).withValues(
-                                                                  alpha: 0.15,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                            child: Column(
-                                                              children: [
-                                                                const SizedBox(
-                                                                    height: 16),
-                                                                Container(
-                                                                  decoration:
-                                                                      BoxDecoration(
-                                                                    color: () {
-                                                                      final status = vm
-                                                                          .completedReceiptOrder
-                                                                          ?.status;
-                                                                      if (status ==
-                                                                          "pending") {
-                                                                        return Colors
-                                                                            .blue
-                                                                            .shade100;
-                                                                      } else if (status ==
-                                                                          "preparing") {
-                                                                        return Colors
-                                                                            .blue
-                                                                            .shade100;
-                                                                      } else if (status ==
-                                                                          "ready") {
-                                                                        return Colors
-                                                                            .blue
-                                                                            .shade100;
-                                                                      } else if (status ==
-                                                                          "enroute") {
-                                                                        return Colors
-                                                                            .blue
-                                                                            .shade100;
-                                                                      } else if (status ==
-                                                                          "failed") {
-                                                                        return Colors
-                                                                            .red
-                                                                            .shade100;
-                                                                      } else if (status ==
-                                                                          "cancelled") {
-                                                                        return Colors
-                                                                            .red
-                                                                            .shade100;
-                                                                      } else if (vm
-                                                                          .isCompletedReceiptStatus(
-                                                                        status,
-                                                                      )) {
-                                                                        return Colors
-                                                                            .green
-                                                                            .shade100;
-                                                                      } else {
-                                                                        return Colors
-                                                                            .blue
-                                                                            .shade100;
-                                                                      }
-                                                                    }(),
-                                                                    borderRadius:
-                                                                        const BorderRadius
-                                                                            .all(
-                                                                      Radius
-                                                                          .circular(
-                                                                              4),
-                                                                    ),
-                                                                  ),
-                                                                  child:
-                                                                      Padding(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .symmetric(
-                                                                      vertical:
-                                                                          4,
-                                                                      horizontal:
-                                                                          8,
-                                                                    ),
-                                                                    child: Text(
-                                                                      () {
-                                                                        final status = vm
-                                                                            .completedReceiptOrder
-                                                                            ?.status;
-                                                                        if (status ==
-                                                                            "pending") {
-                                                                          return "Searching";
-                                                                        } else if (status ==
-                                                                            "preparing") {
-                                                                          return "Waiting";
-                                                                        } else if (status ==
-                                                                            "ready") {
-                                                                          return "Arrived";
-                                                                        } else if (status ==
-                                                                            "enroute") {
-                                                                          return "Ongoing";
-                                                                        } else if (status ==
-                                                                            "failed") {
-                                                                          return "Failed";
-                                                                        } else if (status ==
-                                                                            "cancelled") {
-                                                                          return "Cancelled";
-                                                                        } else if (vm
-                                                                            .isCompletedReceiptStatus(
-                                                                          status,
-                                                                        )) {
-                                                                          return "Completed";
-                                                                        } else {
-                                                                          return "Connecting";
-                                                                        }
-                                                                      }(),
-                                                                      style:
-                                                                          TextStyle(
-                                                                        height:
-                                                                            1,
-                                                                        fontSize:
-                                                                            13,
-                                                                        fontWeight:
-                                                                            FontWeight.w400,
-                                                                        color:
-                                                                            () {
-                                                                          final status = vm
-                                                                              .completedReceiptOrder
-                                                                              ?.status;
-                                                                          if (status ==
-                                                                              "pending") {
-                                                                            return Colors.blue;
-                                                                          } else if (status ==
-                                                                              "preparing") {
-                                                                            return Colors.blue;
-                                                                          } else if (status ==
-                                                                              "ready") {
-                                                                            return Colors.blue;
-                                                                          } else if (status ==
-                                                                              "enroute") {
-                                                                            return Colors.blue;
-                                                                          } else if (status ==
-                                                                              "failed") {
-                                                                            return Colors.red;
-                                                                          } else if (status ==
-                                                                              "cancelled") {
-                                                                            return Colors.red;
-                                                                          } else if (vm
-                                                                              .isCompletedReceiptStatus(
-                                                                            status,
-                                                                          )) {
-                                                                            return Colors.green;
-                                                                          } else {
-                                                                            return Colors.blue;
-                                                                          }
-                                                                        }(),
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 12,
-                                                                ),
-                                                                Text(
-                                                                  "#${vm.completedReceiptOrder?.id}",
-                                                                  style:
-                                                                      const TextStyle(
-                                                                    height:
-                                                                        1.15,
-                                                                    fontSize:
-                                                                        14,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    color:
-                                                                        Color(
-                                                                      0xFF030744,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                Text(
-                                                                  DateFormat(
-                                                                    "MMMM dd, yyy - h:mm a",
-                                                                  ).format(
-                                                                    vm.completedReceiptOrder
-                                                                            ?.createdAt ??
-                                                                        DateTime
-                                                                            .now(),
-                                                                  ),
-                                                                  style:
-                                                                      const TextStyle(
-                                                                    height:
-                                                                        1.15,
-                                                                    fontSize:
-                                                                        12,
-                                                                    color:
-                                                                        Color(
-                                                                      0xFF030744,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                    height: 16),
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .symmetric(
-                                                                    horizontal:
-                                                                        12,
-                                                                  ),
-                                                                  child:
-                                                                      Divider(
-                                                                    height: 1,
-                                                                    thickness:
-                                                                        1,
-                                                                    color:
-                                                                        const Color(
-                                                                      0xFF030744,
-                                                                    ).withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 14,
-                                                                ),
-                                                                Row(
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                    Icon(
-                                                                      () {
-                                                                        final normalizedStatus = (vm.completedReceiptOrder?.status ??
-                                                                                "")
-                                                                            .trim()
-                                                                            .toLowerCase();
-                                                                        if (normalizedStatus ==
-                                                                                "cancelled" ||
-                                                                            normalizedStatus ==
-                                                                                "failed") {
-                                                                          return Icons
-                                                                              .error;
-                                                                        }
-                                                                        if (vm
-                                                                            .isCompletedReceiptStatus(
-                                                                          normalizedStatus,
-                                                                        )) {
-                                                                          return Icons
-                                                                              .check_circle;
-                                                                        }
-                                                                        return Icons
-                                                                            .outbound;
-                                                                      }(),
-                                                                      color:
-                                                                          () {
-                                                                        final normalizedStatus = (vm.completedReceiptOrder?.status ??
-                                                                                "")
-                                                                            .trim()
-                                                                            .toLowerCase();
-                                                                        if (normalizedStatus ==
-                                                                                "cancelled" ||
-                                                                            normalizedStatus ==
-                                                                                "failed") {
-                                                                          return Colors
-                                                                              .red;
-                                                                        }
-                                                                        if (vm
-                                                                            .isCompletedReceiptStatus(
-                                                                          normalizedStatus,
-                                                                        )) {
-                                                                          return const Color(
-                                                                            0xFF2E9E47,
-                                                                          );
-                                                                        }
-                                                                        return const Color(
-                                                                          0xFF007BFF,
-                                                                        );
-                                                                      }(),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 8,
-                                                                    ),
-                                                                    Expanded(
-                                                                      child:
-                                                                          Text(
-                                                                        "${capitalizeWords(
-                                                                          vm
-                                                                              .completedReceiptOrder
-                                                                              ?.driver
-                                                                              ?.vehicle
-                                                                              ?.vehicleType
-                                                                              ?.name,
-                                                                          alt:
-                                                                              "Completed",
-                                                                        )} Booking",
-                                                                        style:
-                                                                            const TextStyle(
-                                                                          height:
-                                                                              1,
-                                                                          fontSize:
-                                                                              14,
-                                                                          color:
-                                                                              Color(
-                                                                            0xFF030744,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    Text(
-                                                                      completedReceiptSourceLabel,
-                                                                      style:
-                                                                          const TextStyle(
-                                                                        height:
-                                                                            1,
-                                                                        fontSize:
-                                                                            14,
-                                                                        color:
-                                                                            Color(
-                                                                          0xFF030744,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 14,
-                                                                ),
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .symmetric(
-                                                                    horizontal:
-                                                                        12,
-                                                                  ),
-                                                                  child:
-                                                                      Divider(
-                                                                    height: 1,
-                                                                    thickness:
-                                                                        1,
-                                                                    color:
-                                                                        const Color(
-                                                                      0xFF030744,
-                                                                    ).withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 14,
-                                                                ),
-                                                                Row(
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .trip_origin,
-                                                                      color:
-                                                                          Color(
-                                                                        0xFF007BFF,
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 8,
-                                                                    ),
-                                                                    Expanded(
-                                                                      child:
-                                                                          Text(
-                                                                        capitalizeWords(
-                                                                          vm.completedReceiptOrder?.taxiOrder
-                                                                              ?.pickupAddress,
-                                                                        ),
-                                                                        maxLines:
-                                                                            1,
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                        style:
-                                                                            const TextStyle(
-                                                                          color:
-                                                                              Color(
-                                                                            0xFF030744,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 12,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 8,
-                                                                ),
-                                                                Row(
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .trip_origin,
-                                                                      color: Colors
-                                                                          .red,
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 8,
-                                                                    ),
-                                                                    Expanded(
-                                                                      child:
-                                                                          Text(
-                                                                        capitalizeWords(
-                                                                          vm.completedReceiptOrder?.taxiOrder
-                                                                              ?.dropoffAddress,
-                                                                        ),
-                                                                        maxLines:
-                                                                            1,
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                        style:
-                                                                            const TextStyle(
-                                                                          color:
-                                                                              Color(
-                                                                            0xFF030744,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 12,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 14,
-                                                                ),
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .symmetric(
-                                                                    horizontal:
-                                                                        12,
-                                                                  ),
-                                                                  child:
-                                                                      Divider(
-                                                                    height: 1,
-                                                                    thickness:
-                                                                        1,
-                                                                    color:
-                                                                        const Color(
-                                                                      0xFF030744,
-                                                                    ).withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 12,
-                                                                ),
-                                                                Row(
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                    Padding(
-                                                                      padding:
-                                                                          const EdgeInsets
-                                                                              .all(
-                                                                        1,
-                                                                      ),
-                                                                      child:
-                                                                          Container(
-                                                                        width:
-                                                                            21,
-                                                                        height:
-                                                                            21,
-                                                                        decoration:
-                                                                            BoxDecoration(
-                                                                          border:
-                                                                              Border.all(
-                                                                            color:
-                                                                                Colors.green,
-                                                                            width:
-                                                                                2,
-                                                                          ),
-                                                                          borderRadius:
-                                                                              const BorderRadius.all(
-                                                                            Radius.circular(
-                                                                              1000,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        child:
-                                                                            const Center(
-                                                                          child:
-                                                                              Text(
-                                                                            "₱",
-                                                                            style:
-                                                                                TextStyle(
-                                                                              height: 1,
-                                                                              fontWeight: FontWeight.bold,
-                                                                              color: Colors.green,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 8,
-                                                                    ),
-                                                                    const Text(
-                                                                      "Total Fare",
-                                                                      style:
-                                                                          TextStyle(
-                                                                        color:
-                                                                            Color(
-                                                                          0xFF030744,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const Expanded(
-                                                                      child: SizedBox
-                                                                          .shrink(),
-                                                                    ),
-                                                                    Text(
-                                                                      "₱${vm.displayedCompletedReceiptFare.toStringAsFixed(0)}",
-                                                                      style:
-                                                                          const TextStyle(
-                                                                        color:
-                                                                            Color(
-                                                                          0xFF030744,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 12,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 8,
-                                                                ),
-                                                                Row(
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .credit_score_outlined,
-                                                                      color: Colors
-                                                                          .green,
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 8,
-                                                                    ),
-                                                                    const Text(
-                                                                      "Payment Method",
-                                                                      style:
-                                                                          TextStyle(
-                                                                        color:
-                                                                            Color(
-                                                                          0xFF030744,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const Expanded(
-                                                                      child: SizedBox
-                                                                          .shrink(),
-                                                                    ),
-                                                                    Text(
-                                                                      vm.completedReceiptOrder?.paymentMethodId ==
-                                                                              1
-                                                                          ? "Cash"
-                                                                          : "Load",
-                                                                      style:
-                                                                          const TextStyle(
-                                                                        color:
-                                                                            Color(
-                                                                          0xFF030744,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      width: 14,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                const SizedBox(
-                                                                  height: 14,
-                                                                ),
-                                                              ],
+                                                          child: Divider(
+                                                            height: 1,
+                                                            thickness: 1,
+                                                            color: const Color(
+                                                              0xFF030744,
+                                                            ).withValues(
+                                                              alpha: 0.15,
                                                             ),
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                          height: 20,
+                                                          height: 14,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                            Icon(
+                                                              () {
+                                                                final normalizedStatus =
+                                                                    (vm.completedReceiptOrder?.status ??
+                                                                            "")
+                                                                        .trim()
+                                                                        .toLowerCase();
+                                                                if (normalizedStatus ==
+                                                                        "cancelled" ||
+                                                                    normalizedStatus ==
+                                                                        "failed") {
+                                                                  return Icons
+                                                                      .error;
+                                                                }
+                                                                if (vm
+                                                                    .isCompletedReceiptStatus(
+                                                                  normalizedStatus,
+                                                                )) {
+                                                                  return Icons
+                                                                      .check_circle;
+                                                                }
+                                                                return Icons
+                                                                    .outbound;
+                                                              }(),
+                                                              color: () {
+                                                                final normalizedStatus =
+                                                                    (vm.completedReceiptOrder?.status ??
+                                                                            "")
+                                                                        .trim()
+                                                                        .toLowerCase();
+                                                                if (normalizedStatus ==
+                                                                        "cancelled" ||
+                                                                    normalizedStatus ==
+                                                                        "failed") {
+                                                                  return Colors
+                                                                      .red;
+                                                                }
+                                                                if (vm
+                                                                    .isCompletedReceiptStatus(
+                                                                  normalizedStatus,
+                                                                )) {
+                                                                  return const Color(
+                                                                    0xFF2E9E47,
+                                                                  );
+                                                                }
+                                                                return const Color(
+                                                                  0xFF007BFF,
+                                                                );
+                                                              }(),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Expanded(
+                                                              child: Text(
+                                                                "${capitalizeWords(
+                                                                  vm
+                                                                      .completedReceiptOrder
+                                                                      ?.driver
+                                                                      ?.vehicle
+                                                                      ?.vehicleType
+                                                                      ?.name,
+                                                                  alt:
+                                                                      "Completed",
+                                                                )} Booking",
+                                                                style:
+                                                                    const TextStyle(
+                                                                  height: 1,
+                                                                  fontSize: 14,
+                                                                  color: Color(
+                                                                    0xFF030744,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              completedReceiptSourceLabel,
+                                                              style:
+                                                                  const TextStyle(
+                                                                height: 1,
+                                                                fontSize: 14,
+                                                                color: Color(
+                                                                  0xFF030744,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 14,
                                                         ),
                                                         Padding(
                                                           padding:
                                                               const EdgeInsets
                                                                   .symmetric(
-                                                            horizontal: 20,
+                                                            horizontal: 12,
                                                           ),
-                                                          child: ActionButton(
-                                                            onTap: () {
-                                                              _returnHomeUsingStartupFlow(vm);
-                                                            },
-                                                            mainColor:
-                                                                const Color(
-                                                              0xFF007BFF,
+                                                          child: Divider(
+                                                            height: 1,
+                                                            thickness: 1,
+                                                            color: const Color(
+                                                              0xFF030744,
                                                             ).withValues(
-                                                              alpha: 0.1,
+                                                              alpha: 0.15,
                                                             ),
-                                                            text:
-                                                                "Return to home",
-                                                            style:
-                                                                const TextStyle(
-                                                              height: 1,
-                                                              fontSize: 14,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 14,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                            const Icon(
+                                                              Icons.trip_origin,
                                                               color: Color(
                                                                 0xFF007BFF,
                                                               ),
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Expanded(
+                                                              child: Text(
+                                                                capitalizeWords(
+                                                                  vm
+                                                                      .completedReceiptOrder
+                                                                      ?.taxiOrder
+                                                                      ?.pickupAddress,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  color: Color(
+                                                                    0xFF030744,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 12,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                            const Icon(
+                                                              Icons.trip_origin,
+                                                              color: Colors.red,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            Expanded(
+                                                              child: Text(
+                                                                capitalizeWords(
+                                                                  vm
+                                                                      .completedReceiptOrder
+                                                                      ?.taxiOrder
+                                                                      ?.dropoffAddress,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  color: Color(
+                                                                    0xFF030744,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 12,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 14,
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                            horizontal: 12,
+                                                          ),
+                                                          child: Divider(
+                                                            height: 1,
+                                                            thickness: 1,
+                                                            color: const Color(
+                                                              0xFF030744,
+                                                            ).withValues(
+                                                              alpha: 0.15,
                                                             ),
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                          height: 20,
+                                                          height: 12,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                            Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                1,
+                                                              ),
+                                                              child: Container(
+                                                                width: 21,
+                                                                height: 21,
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: Colors
+                                                                        .green,
+                                                                    width: 2,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      const BorderRadius
+                                                                          .all(
+                                                                    Radius
+                                                                        .circular(
+                                                                      1000,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                child:
+                                                                    const Center(
+                                                                  child: Text(
+                                                                    "₱",
+                                                                    style:
+                                                                        TextStyle(
+                                                                      height: 1,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color: Colors
+                                                                          .green,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            const Text(
+                                                              "Total Fare",
+                                                              style: TextStyle(
+                                                                color: Color(
+                                                                  0xFF030744,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const Expanded(
+                                                              child: SizedBox
+                                                                  .shrink(),
+                                                            ),
+                                                            Text(
+                                                              "₱${vm.displayedCompletedReceiptFare.toStringAsFixed(0)}",
+                                                              style:
+                                                                  const TextStyle(
+                                                                color: Color(
+                                                                  0xFF030744,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 12,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                            const Icon(
+                                                              Icons
+                                                                  .credit_score_outlined,
+                                                              color:
+                                                                  Colors.green,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                            const Text(
+                                                              "Payment Method",
+                                                              style: TextStyle(
+                                                                color: Color(
+                                                                  0xFF030744,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const Expanded(
+                                                              child: SizedBox
+                                                                  .shrink(),
+                                                            ),
+                                                            Text(
+                                                              vm.completedReceiptOrder
+                                                                          ?.paymentMethodId ==
+                                                                      1
+                                                                  ? "Cash"
+                                                                  : "Load",
+                                                              style:
+                                                                  const TextStyle(
+                                                                color: Color(
+                                                                  0xFF030744,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 14,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 14,
                                                         ),
                                                       ],
                                                     ),
                                                   ),
                                                 ),
-                                              ),
+                                                const SizedBox(
+                                                  height: 20,
+                                                ),
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 20,
+                                                  ),
+                                                  child: ActionButton(
+                                                    onTap: () {
+                                                      _returnHomeUsingStartupFlow(
+                                                          vm);
+                                                    },
+                                                    mainColor: const Color(
+                                                      0xFF007BFF,
+                                                    ).withValues(
+                                                      alpha: 0.1,
+                                                    ),
+                                                    text: "Return to home",
+                                                    style: const TextStyle(
+                                                      height: 1,
+                                                      fontSize: 14,
+                                                      color: Color(
+                                                        0xFF007BFF,
+                                                      ),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height: 20,
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
                                       ),
-                        (isBool(vm.userSeen) ||
-                                vm.dvrMessage == null ||
-                                vm.dvrMessage == "null" ||
-                                vm.ongoingOrder == null ||
-                                vm.ongoingOrder?.status == "cancelled" ||
-                                vm.dvrMessage == "")
+                                    ),
+                                  ),
+                                ),
+                              ),
+                        !vm.shouldShowHomeChatPreview
                             ? const SizedBox.shrink()
                             : IgnorePointer(
                                 child: Container(
@@ -5746,12 +5677,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                   ),
                                 ),
                               ),
-                        (isBool(vm.userSeen) ||
-                                vm.dvrMessage == "" ||
-                                vm.dvrMessage == null ||
-                                vm.dvrMessage == "null" ||
-                                vm.ongoingOrder == null ||
-                                vm.ongoingOrder?.status == "cancelled")
+                        !vm.shouldShowHomeChatPreview
                             ? const SizedBox()
                             : () {
                                 return Positioned(
@@ -5905,7 +5831,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                     builder:
                                                         (context, constraints) {
                                                       final isPortraitLike =
-                                                          mediaQuery.size.width <=
+                                                          mediaQuery
+                                                                  .size.width <=
                                                               mediaQuery
                                                                   .size.height;
                                                       final previewHeight =
@@ -5992,7 +5919,8 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
                                                     mainColor: Colors.red,
                                                     useDefaultHoverColor: false,
                                                     onTap: () async {
-                                                      await vm.markCurrentOrderUserSeen();
+                                                      await vm
+                                                          .markCurrentOrderUserSeen();
                                                     },
                                                     child: const Center(
                                                       child: Row(

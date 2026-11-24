@@ -216,7 +216,8 @@ class TaxiRequest extends HttpService {
         Api.bookingSubmit,
         params,
       );
-      return ApiResponse.fromResponse(apiResult);
+      final apiResponse = ApiResponse.fromResponse(apiResult);
+      return apiResponse;
     } catch (e) {
       throw e.toString();
     }
@@ -247,6 +248,7 @@ class TaxiRequest extends HttpService {
     required List<VehicleType> types,
   }) async {
     Map<String, dynamic>? queryParameters;
+    final endpoint = "/vehicle/$vehicleTypeId/find_available";
     try {
       if (pickup == null) {
         availableDriver = null;
@@ -267,7 +269,7 @@ class TaxiRequest extends HttpService {
               "${dropoff.coordinates.latitude},${dropoff.coordinates.longitude}",
         };
         final apiResult = await get(
-          "/vehicle/$vehicleTypeId/find_available",
+          endpoint,
           queryParameters: queryParameters,
         );
         final apiResponse = ApiResponse.fromResponse(

@@ -25,22 +25,29 @@ class GeocoderService extends HttpService {
     final useExternal = isBool(
       AppStrings.appSettingsObject?["strings"][useExt] ?? _defaultUseExternal,
     );
-    final apiResult = await get(
-      !useExternal
-          ? Api.geoCoordinates
-          : "https://backrideph.online/api/geocoder/forward",
-      queryParameters: {
-        "lat": coordinates.latitude,
-        "lng": coordinates.longitude,
-      },
-      includeHeaders: !useExternal,
-    );
-
-    final apiResponse = ApiResponse.fromResponse(apiResult);
-    if (apiResponse.allGood) {
-      return (apiResponse.data).map((e) => Address.fromServerMap(e)).toList();
+    final endpoint = !useExternal
+        ? Api.geoCoordinates
+        : "https://backrideph.online/api/geocoder/forward";
+    final queryParameters = <String, dynamic>{
+      "lat": coordinates.latitude,
+      "lng": coordinates.longitude,
+    };
+    try {
+      final apiResult = await get(
+        endpoint,
+        queryParameters: queryParameters,
+        includeHeaders: !useExternal,
+      );
+      final apiResponse = ApiResponse.fromResponse(apiResult);
+      if (apiResponse.allGood) {
+        final addresses =
+            apiResponse.data.map((e) => Address.fromServerMap(e)).toList();
+        return addresses;
+      }
+      return [];
+    } catch (e) {
+      rethrow;
     }
-    return [];
   }
 
   bool isReadableAddress(String? address) {
@@ -156,26 +163,31 @@ class GeocoderService extends HttpService {
     final useExternal = isBool(
       AppStrings.appSettingsObject?["strings"][useExt] ?? _defaultUseExternal,
     );
-    final apiResult = await get(
-      !useExternal
-          ? Api.geoPolylines
-          : "https://backrideph.online/api/polylines",
-      queryParameters: {
-        "purpose": purpose,
-        "key": AppStrings.googleMapApiKey,
-        "origin": "${pointA.lat},${pointA.lng}",
-        "destination": "${pointB.lat},${pointB.lng}",
-      },
-      includeHeaders: !useExternal,
-    );
-    final apiResponse = ApiResponse.fromResponse(apiResult);
-    if (apiResponse.allGood) {
-      final decoded = decodeEncodedPolyline(
-        apiResponse.body["data"].toString(),
+    final endpoint = !useExternal
+        ? Api.geoPolylines
+        : "https://backrideph.online/api/polylines";
+    final queryParameters = <String, dynamic>{
+      "purpose": purpose,
+      "key": AppStrings.googleMapApiKey,
+      "origin": "${pointA.lat},${pointA.lng}",
+      "destination": "${pointB.lat},${pointB.lng}",
+    };
+    try {
+      final apiResult = await get(
+        endpoint,
+        queryParameters: queryParameters,
+        includeHeaders: !useExternal,
       );
-      return decoded;
+      final apiResponse = ApiResponse.fromResponse(apiResult);
+      if (apiResponse.allGood) {
+        final encoded = apiResponse.body["data"].toString();
+        final decoded = decodeEncodedPolyline(encoded);
+        return decoded;
+      }
+      throw apiResponse.message;
+    } catch (e) {
+      rethrow;
     }
-    throw apiResponse.message;
   }
 
   List<List<double>> decodeEncodedPolyline(String encoded) {

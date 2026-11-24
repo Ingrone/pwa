@@ -709,7 +709,7 @@ Future<dynamic> showCameraSource({
       } else if (await Permission.camera.isDenied) {
         PermissionStatus status = await Permission.camera.request();
         if (status.isGranted) {
-          return openCameraView();
+          return await openCameraView();
         }
         showPermissionSettingsDialog(
           permissionName: "Camera",
@@ -718,11 +718,11 @@ Future<dynamic> showCameraSource({
         );
         return null;
       } else {
-        return openCameraView();
+        return await openCameraView();
       }
     }
 
-    return openCameraView();
+    return await openCameraView();
   } catch (e) {
     AlertService().showAppAlert(
       title: "Error",

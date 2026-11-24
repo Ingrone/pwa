@@ -856,7 +856,7 @@ class GMapViewModel extends BaseViewModel {
             const Duration(milliseconds: 800),
           );
         }
-          _map!.move(nextCenter, currentZoom);
+        _map!.move(nextCenter, currentZoom);
       }
       _syncMapUiNotifiers();
       notifyListeners();
@@ -868,7 +868,9 @@ class GMapViewModel extends BaseViewModel {
   drawPickPolyLines(
       String purpose, gmaps.LatLng pickupLatLng, gmaps.LatLng driverLatLng,
       {bool animatePolyline = false}) async {
-    if (_map == null) return;
+    if (_map == null) {
+      return;
+    }
     final routeDrawGeneration = ++_routeDrawGeneration;
     markers = [
       const MapMarkerData(
@@ -919,8 +921,8 @@ class GMapViewModel extends BaseViewModel {
             padding: routeBoundsPadding,
           );
         }
-      } else {}
-    } catch (e) {
+      }
+    } catch (_) {
       // Ignore temporary polyline failures.
     }
     notifyListeners();
@@ -935,7 +937,9 @@ class GMapViewModel extends BaseViewModel {
     bool autoFitMap = true,
     bool autoFitAnimated = true,
   }) async {
-    if (_map == null) return;
+    if (_map == null) {
+      return;
+    }
     final routeDrawGeneration = ++_routeDrawGeneration;
     markers = [
       const MapMarkerData(
@@ -998,8 +1002,8 @@ class GMapViewModel extends BaseViewModel {
             animated: autoFitAnimated,
           );
         }
-      } else {}
-    } catch (e) {
+      }
+    } catch (_) {
       // Ignore temporary polyline failures.
     }
     notifyListeners();

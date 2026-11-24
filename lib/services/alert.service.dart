@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
@@ -12,22 +11,6 @@ import 'package:pwa/widgets/branded_circular_loader.widget.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 BuildContext? _loadingDialogContext;
-
-void _tempLoadingDebug(
-  String label, {
-  Map<String, Object?> details = const {},
-}) {
-  debugPrint(
-    "[TEMP_LOADING_DEBUG] ${jsonEncode({
-      "ts": DateTime.now().toIso8601String(),
-      "label": label,
-      "isLoadingDialogOpen": isLoadingDialogOpen,
-      "isChatViewOpen": isChatViewOpen,
-      "hasLoadingDialogContext": _loadingDialogContext != null,
-      ...details,
-    })}",
-  );
-}
 
 class AlertService {
   static const double actionGap = 12;
@@ -230,8 +213,7 @@ class AlertService {
                                                           ? const SizedBox
                                                               .shrink()
                                                           : const SizedBox(
-                                                              width:
-                                                                  actionGap,
+                                                              width: actionGap,
                                                             ),
                                                       Expanded(
                                                         child: ActionButton(
@@ -384,20 +366,8 @@ class AlertService {
     bool dismissible = false,
   }) {
     if (isLoadingDialogOpen) {
-      _tempLoadingDebug(
-        "ShowLoadingSkippedAlreadyOpen",
-        details: {
-          "dismissible": dismissible,
-        },
-      );
       return;
     }
-    _tempLoadingDebug(
-      "ShowLoadingStart",
-      details: {
-        "dismissible": dismissible,
-      },
-    );
     if (!isChatViewOpen) {
       FocusManager.instance.primaryFocus?.unfocus();
     }
@@ -452,27 +422,14 @@ class AlertService {
       },
       barrierColor: bg ?? Colors.black.withValues(alpha: 0.5),
     ).whenComplete(() {
-      _tempLoadingDebug("ShowLoadingWhenComplete");
       _loadingDialogContext = null;
       setLoadingDialogOpen(false);
     });
   }
 
   stopLoading({bool forceStop = false}) {
-    _tempLoadingDebug(
-      "StopLoadingStart",
-      details: {
-        "forceStop": forceStop,
-      },
-    );
     if (!forceStop) {
       if (!isLoadingDialogOpen) {
-        _tempLoadingDebug(
-          "StopLoadingSkippedNotOpen",
-          details: {
-            "forceStop": forceStop,
-          },
-        );
         return;
       }
     }
@@ -485,13 +442,11 @@ class AlertService {
     if (dialogContext != null) {
       final navigator = Navigator.of(dialogContext, rootNavigator: true);
       if (navigator.canPop()) {
-        _tempLoadingDebug("StopLoadingNavigatorPop");
         navigator.pop();
       }
       return;
     }
     if (Get.isDialogOpen == true) {
-      _tempLoadingDebug("StopLoadingGetBack");
       Get.back();
     }
   }
@@ -631,8 +586,7 @@ class _DriverDistantDialogState extends State<_DriverDistantDialog> {
     final canAccept = _secondsLeft == 0 && _acknowledged && !_submitting;
     final pickupKmValue = widget.availableDriver.pickupKm ?? 0;
     final pickupKm = pickupKmValue.toStringAsFixed(2);
-    final pickupFeeValue =
-        widget.displayedPickupFee ??
+    final pickupFeeValue = widget.displayedPickupFee ??
         widget.availableDriver.pickupChargeFee?.ceilToDouble() ??
         0;
     final pickupFee = pickupFeeValue.toStringAsFixed(0);

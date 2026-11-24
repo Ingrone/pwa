@@ -567,11 +567,13 @@ class HttpService {
         ex.requestOptions.method,
         ex.requestOptions.uri,
       );
-      if (appServerRequest && online && !ignoresServerBanner) {
-        ConnectionBannerService.show(
-          ConnectionBannerType.server,
-          requestStartedAt: requestStartedAt,
-        );
+      if (appServerRequest && online) {
+        if (!ignoresServerBanner) {
+          ConnectionBannerService.show(
+            ConnectionBannerType.server,
+            requestStartedAt: requestStartedAt,
+          );
+        }
         response.statusCode = 503;
         response.data = {
           "message": _resolveDioExceptionMessage(
